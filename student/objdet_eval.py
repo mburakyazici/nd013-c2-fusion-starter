@@ -70,9 +70,9 @@ def measure_detection_performance(detections, labels, labels_valid, min_iou=0.5)
                 ## step 5 : compute the intersection over union (IOU) between label and detection bounding-box
                 l_poly = Polygon(l_corners)
                 d_poly = Polygon(d_corners)
-                intersection = l_poly.intersection(d_poly).area
-                union = l_poly.area + d_poly.area
-                iou = intersection / (union - intersection)
+                intersection = d_poly.intersection(l_poly)
+                union = d_poly.union(l_poly)
+                iou = intersection.area / union.area
 
                 if np.isclose(iou, 1.0):
                     iou = 1.0
