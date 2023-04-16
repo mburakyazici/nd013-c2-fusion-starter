@@ -39,16 +39,18 @@ class Association:
         ############
         
         # the following only works for at most one track and one measurement
-        self.association_matrix = np.matrix([]) # reset matrix
-        self.unassigned_tracks = [] # reset lists
-        self.unassigned_meas = []
+        self.association_matrix = np.inf * np.ones((len(track_list), len(meas_list)))
+        self.unassigned_tracks = list(range(len(track_list))) # reset lists
+        self.unassigned_meas = list(range(len(meas_list)))
         
-        if len(meas_list) > 0:
-            self.unassigned_meas = [0]
-        if len(track_list) > 0:
-            self.unassigned_tracks = [0]
-        if len(meas_list) > 0 and len(track_list) > 0: 
-            self.association_matrix = np.matrix([[0]])
+        if len(meas_list) > 0 and len(track_list) > 0:
+            for i in range(len(track_list)):
+                track = track_list[i]
+                for j in range(len(meas_list)):
+                    meas = meas_list[j]
+                    dist = self.MHD(track, meas, KF)
+                    if self.gating(dist, meas.sensor):
+                        self.association_matrix[i, j] = dist
         
         ############
         # END student code
@@ -63,14 +65,18 @@ class Association:
         # - return this track and measurement
         ############
 
-        # the following only works for at most one track and one measurement
-        update_track = 0
-        update_meas = 0
+        x, y = np.unravel_index(np.argmin(self.association_matrix, axis=None), shape=self.association_matrix.shape)
+        if np.min(self.association_matrix) == np.inf:
+            return np.nan, np.nan
+        else:
+            update_track = self.unassigned_tracks[x]
+            update_meas = self.unassigned_meas[y]
         
         # remove from list
         self.unassigned_tracks.remove(update_track) 
         self.unassigned_meas.remove(update_meas)
-        self.association_matrix = np.matrix([])
+        self.association_matrix = np.delete(self.association_matrix, x, axis=0)
+        self.association_matrix = np.delete(self.association_matrix, y, axis=1)
             
         ############
         # END student code
@@ -82,7 +88,11 @@ class Association:
         # TODO Step 3: return True if measurement lies inside gate, otherwise False
         ############
         
-        pass    
+        limitation = chi2.ppf(params.gating_threshold, sensor.dim_meas)
+
+        if MHD < limitation:
+            return True
+        return False    
         
         ############
         # END student code
@@ -93,8 +103,9 @@ class Association:
         # TODO Step 3: calculate and return Mahalanobis distance
         ############
         
-        pass
+        distance = (KF.gamma(track, meas).T * np.linalg.inv(KF.S(track, meas, meas.sensor.get_H(track.x))) * KF.gamma(track, meas))
         
+        return distance
         ############
         # END student code
         ############ 
